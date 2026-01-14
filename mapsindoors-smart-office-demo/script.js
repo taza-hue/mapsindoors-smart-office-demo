@@ -265,6 +265,8 @@ function initMap() {
           right.appendChild(p);
         }
 
+        right.appendChild(createTempPill(location));
+
         li.appendChild(left);
         li.appendChild(right);
 
@@ -607,6 +609,8 @@ function initMap() {
           p.classList.add(avail.status === "booked" ? "pill-booked" : "pill-available");
           detailsPillsElement.appendChild(p);
         }
+
+        detailsPillsElement.appendChild(createTempPill(location));
 
         detailsDescriptionElement.textContent =
             location.properties?.description || "No description available.";
@@ -1356,5 +1360,56 @@ function initMap() {
         activeBookingsList.appendChild(row);
       }
     }
+
+    function hashStringToInt(str) {
+      // simple deterministic hash
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      }
+      return h;
+    }
+
+    function getDynamicTemperatureC(location) {
+      // Base temp derived from location id/name (stable per location)
+      const key = String(location?.id || location?.properties?.name || "unknown");
+      const seed = hashStringToInt(key);
+
+      // Base range: 20–26°C (office-ish)
+      const base = 20 + (seed % 7); // 20..26
+
+      // Add gentle variation over time (changes every 10 minutes)
+      const bucket = Math.floor(Date.now() / (10 * 60 * 1000)); // 10-min buckets
+      const wobbleSeed = (seed ^ bucket) >>> 0;
+      const wobble = ((wobbleSeed % 7) - 3) * 0.3; // -0.9 .. +0.9
+
+      // Add tiny per-render noise based on seconds (keeps it "alive" but subtle)
+      const seconds = new Date().getSeconds();
+      const micro = ((seconds % 10) - 5) * 0.02; // -0.10..+0.08
+
+      return Math.round((base + wobble + micro) * 10) / 10; // 1 decimal
+    }
+
+    function tempClass(tempC) {
+      if (tempC < 20) return "pill-temp-cold";
+      if (tempC < 23) return "pill-temp-mild";
+      if (tempC < 26) return "pill-temp-warm";
+      return "pill-temp-hot";
+    }
+
+    function createTempPill(location) {
+      const t = getDynamicTemperatureC(location);
+      const pill = createPill(`${t}°C`);
+      pill.classList.add(tempClass(t));
+      return pill;
+    }
+
+    setInterval(() => {
+      // If details are open, refresh pills for the current location
+      if (currentDetailsLocation && !detailsUIElement.classList.contains("hidden")) {
+        showDetails(currentDetailsLocation);
+      }
+    }, 60 * 1000);
+
 
 }

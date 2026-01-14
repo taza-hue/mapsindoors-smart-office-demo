@@ -570,3 +570,104 @@ html, body {
 #details-ui .details-button + .details-button {
     margin-top: 8px;
 }
+
+/* Temperature pills (applies to .pill elements) */
+.pill-temp-cold {
+  background: rgba(0, 151, 169, 0.18);
+  color: rgba(0, 120, 135, 1);
+  border: 1px solid rgba(0, 151, 169, 0.35);
+}
+
+.pill-temp-mild {
+  background: rgba(0, 155, 119, 0.18);
+  color: rgba(0, 120, 90, 1);
+  border: 1px solid rgba(0, 155, 119, 0.35);
+}
+
+.pill-temp-warm {
+  background: rgba(255, 205, 0, 0.22);
+  color: rgba(130, 95, 0, 1);
+  border: 1px solid rgba(255, 205, 0, 0.45);
+}
+
+.pill-temp-hot {
+  background: rgba(255, 106, 19, 0.18);
+  color: rgba(190, 70, 10, 1);
+  border: 1px solid rgba(255, 106, 19, 0.35);
+}
+
+/* Make origin search results look identical to main search results */
+#origin-results {
+    max-height: 50vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+
+    padding: 0;
+    margin: 8px 0 0 0;
+    list-style: none;
+}
+
+#origin-results li {
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+#origin-results li:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* Reuse the same row layout as the main search dropdown */
+#origin-results li.location-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+#origin-results li.location-row .location-left {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#origin-results li.location-row .pill-group {
+    display: flex;
+    gap: 6px;
+    flex: 0 0 auto;
+    flex-wrap: wrap; /* prevents pills from smashing into one line */
+    justify-content: flex-end;
+}
+
+#origin-results li.location-row .pill {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.08);
+    color: rgba(0,0,0,0.75);
+}
+
+/* Allow location rows to wrap cleanly */
+.location-row {
+    display: flex;
+    flex-wrap: wrap;              /* 👈 allow wrapping */
+    align-items: flex-start;
+    gap: 6px 10px;                /* row-gap / column-gap */
+}
+
+/* Left (location name) */
+.location-row .location-left {
+    flex: 1 1 100%;               /* 👈 take full width when needed */
+    min-width: 0;                 /* allow text wrapping */
+    white-space: normal;          /* allow multi-line */
+    line-height: 1.35;
+}
+
+/* Pills container */
+.location-row .pill-group {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;              /* pills can wrap too */
+    gap: 6px;
+}
