@@ -393,3 +393,180 @@ html, body {
         width: calc(100vw - 24px);
     }
 }
+
+/* Availability pills */
+.pill-available {
+  background: rgba(0, 155, 119, 0.18);
+  color: rgba(0, 120, 90, 1);
+  border: 1px solid rgba(0, 155, 119, 0.35);
+}
+.pill-booked {
+  background: rgba(255, 106, 19, 0.18);
+  color: rgba(190, 70, 10, 1);
+  border: 1px solid rgba(255, 106, 19, 0.35);
+}
+
+/* Booking button in details */
+.details-book-btn {
+  margin-top: 10px;
+  width: 100%;
+}
+
+/* Booking modal */
+.booking-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.booking-modal {
+  width: 100%;
+  max-width: 520px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 10px 35px rgba(0,0,0,0.25);
+  padding: 16px;
+}
+.booking-modal h3 { margin: 0 0 10px 0; }
+.booking-row { display: flex; gap: 10px; align-items: center; margin: 10px 0; }
+.booking-row select { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.2); }
+.booking-list {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 12px;
+  padding: 10px;
+}
+.booking-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.booking-item:last-child { border-bottom: none; }
+.booking-item .muted { opacity: 0.7; font-size: 0.9rem; }
+.booking-actions { display: flex; gap: 10px; margin-top: 12px; }
+.booking-actions button { flex: 1; }
+
+/* Active bookings card (bottom right) */
+.active-bookings-card {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  z-index: 9000;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.active-bookings-title { margin: 0 0 8px 0; font-size: 1rem; }
+.active-bookings-list { max-height: 200px; overflow-y: auto; }
+.active-booking-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.active-booking-row:last-child { border-bottom: none; }
+.active-booking-link {
+  all: unset;
+  cursor: pointer;
+  color: #00587C;
+  text-decoration: underline;
+  font-weight: 600;
+}
+.active-booking-x {
+  all: unset;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.8;
+}
+.active-booking-x:hover { opacity: 1; }
+
+/* Responsive: stack cards on small screens */
+@media (max-width: 760px) {
+  .admin-bookings-card {
+    right: 16px;
+    bottom: 240px; /* push above the other card */
+  }
+}
+
+/* Dock that holds booking cards bottom-right without overlap */
+.bookings-dock {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9000;
+
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+/* Cards inside the dock should NOT be fixed-position anymore */
+.bookings-dock .active-bookings-card {
+  position: static;          /* override previous fixed */
+  width: 320px;
+  max-width: calc(100vw - 32px);
+}
+
+/* Responsive: stack vertically on smaller screens */
+@media (max-width: 760px) {
+  .bookings-dock {
+    flex-direction: column;
+    right: 12px;
+    bottom: 12px;
+    gap: 12px;
+  }
+
+  .bookings-dock .active-bookings-card {
+    width: calc(100vw - 24px);
+  }
+}
+
+/* --- Normalize buttons in location details card --- */
+#details-ui .details-button {
+    width: 100%;                 /* same width */
+    height: 40px;                /* same height */
+    border-radius: 10px;         /* same shape */
+    font-size: 0.95rem;
+    font-weight: 500;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;                  /* avoid height drift */
+    box-sizing: border-box;
+}
+
+/* Primary action buttons */
+#details-ui .details-action-button {
+    background: #00587C;
+    color: white;
+    border: none;
+}
+
+/* Secondary / neutral buttons */
+#details-ui .details-button:not(.details-action-button) {
+    background: rgba(0,0,0,0.06);
+    color: #222;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+/* Slight spacing consistency */
+#details-ui .details-button + .details-button {
+    margin-top: 8px;
+}

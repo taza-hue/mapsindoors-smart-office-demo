@@ -59,6 +59,9 @@
             <div id="details-pills" class="details-pills"></div>
             <p id="details-description"></p>
             <button id="details-directions" class="details-button details-action-button">Get Directions</button>
+            <button id="details-book" class="details-button details-action-button details-book-btn hidden">
+              Book this location
+            </button>
             <button id="details-close" class="details-button">Close</button>
         </div>
         <div id="directions-ui" class="hidden flex-column">
@@ -91,6 +94,50 @@
         <button id="locate-me-btn" class="details-button details-action-button">Locate me</button>
         <button id="clear-location-btn" class="details-button">Clear location</button>
       </div>
+    </div>
+
+    <!-- Booking modal root -->
+    <div id="booking-overlay" class="booking-overlay hidden">
+      <div class="booking-modal">
+        <h3 id="booking-title">Book</h3>
+
+        <div class="booking-row">
+          <label style="min-width: 92px; opacity: .8;">Start</label>
+          <select id="booking-start"></select>
+        </div>
+
+        <div class="booking-row">
+          <label style="min-width: 92px; opacity: .8;">End</label>
+          <select id="booking-end"></select>
+        </div>
+
+        <div style="margin: 10px 0 8px 0; font-weight: 600;">Existing bookings</div>
+        <div id="booking-existing" class="booking-list"></div>
+
+        <div id="booking-error" class="auth-error hidden" style="margin-top:10px;"></div>
+
+        <div class="booking-actions">
+          <button id="booking-cancel" class="details-button">Cancel</button>
+          <button id="booking-confirm" class="details-button details-action-button">Confirm booking</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="bookings-dock" class="bookings-dock">
+        <!-- Active bookings (bottom-right) -->
+        <div id="active-bookings-card" class="active-bookings-card">
+          <h3 class="active-bookings-title">My Active Bookings</h3>
+          <div id="active-bookings-list" class="active-bookings-list">
+            <div style="opacity:.7;">No active bookings.</div>
+          </div>
+        </div>
+        <!-- Admin: Other users' bookings (non-admin only) -->
+        <div id="admin-bookings-card" class="active-bookings-card admin-bookings-card hidden">
+          <h3 class="active-bookings-title">User Bookings (Non-Admin)</h3>
+          <div id="admin-bookings-list" class="active-bookings-list">
+            <div style="opacity:.7;">No non-admin bookings.</div>
+          </div>
+        </div>
     </div>
 
     <!-- IMPORTANT: load credentials before script.js -->

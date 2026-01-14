@@ -106,6 +106,68 @@ authFormEl.addEventListener("submit", (e) => {
    Map initialization (gated)
 ----------------------------- */
 function initMap() {
+
+    const DAY_START = 9 * 60;   // 09:00
+    const DAY_END = 17 * 60;    // 17:00
+    const BOOKABLE_TYPE_MATCH = ["meetingroom", "desk", "workstation"];
+
+    function todayISO() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,"0");
+      const dd = String(d.getDate()).padStart(2,"0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function isBookableLocation(location) {
+      const t = (getLocationTypeLabel(location) || "").toLowerCase();
+      return BOOKABLE_TYPE_MATCH.some(k => t.includes(k));
+    }
+
+    function minutesToHHMM(m) {
+      const h = Math.floor(m/60);
+      const min = m % 60;
+      return `${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}`;
+    }
+
+    function slotOptions() {
+      // 30-min steps
+      const out = [];
+      for (let m = DAY_START; m <= DAY_END; m += 30) out.push(m);
+      return out;
+    }
+
+    function overlaps(aStart, aEnd, bStart, bEnd) {
+      return !(aEnd <= bStart || aStart >= bEnd);
+    }
+
+    let bookingsCache = []; // bookings for today (or all, but we’ll use today)
+
+    async function refreshBookings() {
+      const date = todayISO();
+      const res = await fetch(`/api/bookings?date=${encodeURIComponent(date)}`);
+      const data = await res.json();
+      bookingsCache = Array.isArray(data.bookings) ? data.bookings : [];
+      renderActiveBookingsCard();
+      renderAdminBookingsCard();
+    }
+
+    function myAuth() {
+      return window.SXSW_AUTH || JSON.parse(localStorage.getItem("sxsw_demo_auth") || "null");
+    }
+
+    function myUsername() {
+      return myAuth()?.username || null;
+    }
+
+    function myUserType() {
+      return myAuth()?.userType || null;
+    }
+
+    function isVisitor() {
+      return (myUserType() || "").toLowerCase() === "visitor";
+    }
+
     // Define options for the MapsIndoors Mapbox view
     const mapViewOptions = {
         accessToken: 'pk.eyJ1IjoibWFwc3Blb3BsZSIsImEiOiJjbDc0ZDFsMjgwc25vM29tYWlnMXM1eWNzIn0.LGBv5axS_BuyVF4b4yK0_Q',
@@ -195,6 +257,13 @@ function initMap() {
 
         const typeLabel = getLocationTypeLabel(location);
         if (typeLabel) right.appendChild(createPill(typeLabel));
+
+        const avail = availabilityForLocationNow(location);
+        if (avail) {
+          const p = createPill(avail.label);
+          p.classList.add(avail.status === "booked" ? "pill-booked" : "pill-available");
+          right.appendChild(p);
+        }
 
         li.appendChild(left);
         li.appendChild(right);
@@ -532,8 +601,24 @@ function initMap() {
         const typeLabel = getLocationTypeLabel(location);
         if (typeLabel) detailsPillsElement.appendChild(createPill(typeLabel));
 
+        const avail = availabilityForLocationNow(location);
+        if (avail) {
+          const p = createPill(avail.label);
+          p.classList.add(avail.status === "booked" ? "pill-booked" : "pill-available");
+          detailsPillsElement.appendChild(p);
+        }
+
         detailsDescriptionElement.textContent =
             location.properties?.description || "No description available.";
+
+        const canBook = isBookableLocation(location) && !isVisitor();
+        if (canBook) {
+          detailsBookButton.classList.remove("hidden");
+          detailsBookButton.onclick = () => openBookingModal(location);
+        } else {
+          detailsBookButton.classList.add("hidden");
+          detailsBookButton.onclick = null;
+        }
 
         showDetailsUI();
     }
@@ -550,6 +635,7 @@ function initMap() {
     const stepIndicator = document.getElementById('step-indicator');
     const directionsCloseButton = document.getElementById('directions-close');
     const detailsDirectionsButton = document.getElementById('details-directions');
+    const detailsBookButton = document.getElementById("details-book");
 
     let selectedOrigin = null;
     let selectedDestination = null;
@@ -910,6 +996,343 @@ function initMap() {
 
     function enableOriginSearch() {
         originInputElement.disabled = false;
+    }
+
+    refreshBookings();
+
+    function isWithinBusinessHoursNow() {
+      const now = new Date();
+      const m = now.getHours()*60 + now.getMinutes();
+      return m >= DAY_START && m < DAY_END;
+    }
+
+    function availabilityForLocationNow(location) {
+      if (isVisitor()) return null;
+      if (!isBookableLocation(location)) return null;
+
+      // outside 9–5: you can choose to hide pill or show "Unavailable"
+      if (!isWithinBusinessHoursNow()) {
+        return { status: "available", label: "Available" }; // keep simple for demo
+      }
+
+      const date = todayISO();
+      const now = new Date();
+      const nowMin = now.getHours()*60 + now.getMinutes();
+
+      const locId = location.id;
+      const booked = bookingsCache.some(b =>
+        b.date === date &&
+        b.locationId === locId &&
+        overlaps(nowMin, nowMin+1, b.startMin, b.endMin)
+      );
+
+      return booked
+        ? { status: "booked", label: "Booked" }
+        : { status: "available", label: "Available" };
+    }
+
+    const bookingOverlay = document.getElementById("booking-overlay");
+    const bookingTitle = document.getElementById("booking-title");
+    const bookingStart = document.getElementById("booking-start");
+    const bookingEnd = document.getElementById("booking-end");
+    const bookingExisting = document.getElementById("booking-existing");
+    const bookingError = document.getElementById("booking-error");
+    const bookingCancel = document.getElementById("booking-cancel");
+    const bookingConfirm = document.getElementById("booking-confirm");
+    const adminBookingsCard = document.getElementById("admin-bookings-card");
+    const adminBookingsList = document.getElementById("admin-bookings-list");
+
+    let bookingTargetLocation = null;
+
+    const requesterIsAdmin = (myUserType() || "").toLowerCase() === "admin";
+    if (requesterIsAdmin) {
+      adminBookingsCard.classList.remove("hidden");
+    } else {
+      adminBookingsCard.classList.add("hidden");
+    }
+
+    async function goToBookingLocation(locationId) {
+      try {
+        const loc = await mapsindoors.services.LocationsService.getLocation(locationId);
+        if (loc) handleLocationClick(loc);
+      } catch (e) {
+        console.error("Could not load location:", e);
+      }
+    }
+
+    function renderAdminBookingsCard() {
+      const requesterIsAdmin = (myUserType() || "").toLowerCase() === "admin";
+      if (!requesterIsAdmin) return;
+
+      const nonAdmin = bookingsCache
+        .filter(b => (b.userType || "").toLowerCase() !== "admin")
+        .sort((a, b) => (a.date === b.date ? a.startMin - b.startMin : a.date.localeCompare(b.date)));
+
+      adminBookingsList.innerHTML = "";
+
+      if (nonAdmin.length === 0) {
+        adminBookingsList.innerHTML = `<div style="opacity:.7;">No non-admin bookings.</div>`;
+        return;
+      }
+
+      for (const b of nonAdmin) {
+        const row = document.createElement("div");
+        row.className = "active-booking-row";
+
+        const left = document.createElement("div");
+
+        const link = document.createElement("button");
+        link.className = "active-booking-link";
+        link.textContent = b.locationName || b.locationId;
+        link.onclick = () => goToBookingLocation(b.locationId);
+
+        const meta = document.createElement("div");
+        meta.style.opacity = "0.75";
+        meta.style.fontSize = "0.9rem";
+        meta.textContent = `${b.username} • ${b.date} • ${minutesToHHMM(b.startMin)}–${minutesToHHMM(b.endMin)}`;
+
+        left.appendChild(link);
+        left.appendChild(meta);
+
+        const x = document.createElement("button");
+        x.className = "active-booking-x";
+        x.innerHTML = "&times;";
+        x.title = "Remove booking (admin)";
+        x.onclick = async () => {
+          try {
+            await deleteBooking(b.id);     // server already allows admin delete for non-admin owners
+            await refreshBookings();       // will re-render both cards
+            if (currentDetailsLocation) showDetails(currentDetailsLocation);
+          } catch (e) {
+            console.error(e);
+          }
+        };
+
+        row.appendChild(left);
+        row.appendChild(x);
+        adminBookingsList.appendChild(row);
+      }
+    }
+
+    function fillTimeSelects() {
+      const opts = slotOptions();
+      bookingStart.innerHTML = "";
+      bookingEnd.innerHTML = "";
+
+      for (const m of opts) {
+        const o = document.createElement("option");
+        o.value = String(m);
+        o.textContent = minutesToHHMM(m);
+        bookingStart.appendChild(o);
+      }
+      for (const m of opts) {
+        const o = document.createElement("option");
+        o.value = String(m);
+        o.textContent = minutesToHHMM(m);
+        bookingEnd.appendChild(o);
+      }
+
+      bookingStart.value = String(DAY_START);
+      bookingEnd.value = String(DAY_START + 60);
+    }
+    fillTimeSelects();
+
+    function showBookingError(msg) {
+      bookingError.textContent = msg;
+      bookingError.classList.remove("hidden");
+    }
+    function clearBookingError() {
+      bookingError.textContent = "";
+      bookingError.classList.add("hidden");
+    }
+
+    function openBookingModal(location) {
+      bookingTargetLocation = location;
+      clearBookingError();
+      bookingTitle.textContent = `Book: ${location.properties?.name || "(Unnamed)"}`;
+      renderExistingBookingsForLocation(location);
+      bookingOverlay.classList.remove("hidden");
+    }
+
+    function closeBookingModal() {
+      bookingTargetLocation = null;
+      bookingOverlay.classList.add("hidden");
+    }
+    bookingCancel.addEventListener("click", closeBookingModal);
+
+    function renderExistingBookingsForLocation(location) {
+      const date = todayISO();
+      const locBookings = bookingsCache
+        .filter(b => b.date === date && b.locationId === location.id)
+        .sort((a,b) => a.startMin - b.startMin);
+
+      bookingExisting.innerHTML = "";
+
+      if (locBookings.length === 0) {
+        bookingExisting.innerHTML = `<div style="opacity:.7;">No bookings yet.</div>`;
+        return;
+      }
+
+      const me = myUsername();
+
+      for (const b of locBookings) {
+        const row = document.createElement("div");
+        row.className = "booking-item";
+
+        const left = document.createElement("div");
+        left.innerHTML = `
+          <div><strong>${minutesToHHMM(b.startMin)}–${minutesToHHMM(b.endMin)}</strong></div>
+          <div class="muted">Booked by ${b.username}</div>
+        `;
+
+        const right = document.createElement("div");
+        const me = myUsername();
+        const requesterIsAdmin = (myUserType() || "").toLowerCase() === "admin";
+        const ownerIsAdmin = (b.userType || "").toLowerCase() === "admin";
+
+        if (b.username === me || (requesterIsAdmin && !ownerIsAdmin)) {
+          const btn = document.createElement("button");
+          btn.className = "details-button";
+          btn.textContent = "Remove";
+          btn.onclick = async () => {
+            await deleteBooking(b.id);
+            await refreshBookings();
+            renderExistingBookingsForLocation(location);
+          };
+          right.appendChild(btn);
+        } else {
+          right.innerHTML = `<div class="muted">—</div>`;
+        }
+
+        row.appendChild(left);
+        row.appendChild(right);
+        bookingExisting.appendChild(row);
+      }
+    }
+
+    async function createBooking(location, startMin, endMin) {
+      const username = myUsername();
+      const userType = myUserType();
+      const date = todayISO();
+
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locationId: location.id,
+          locationName: location.properties?.name || "",
+          startMin,
+          endMin,
+          date,
+          username,
+          userType
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Booking failed.");
+      return data.booking;
+    }
+
+    async function deleteBooking(id) {
+      const username = myUsername();
+      const userType = myUserType();
+
+      const res = await fetch(
+        `/api/bookings/${encodeURIComponent(id)}?username=${encodeURIComponent(username)}&userType=${encodeURIComponent(userType)}`,
+        { method: "DELETE" }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Delete failed.");
+    }
+
+    bookingConfirm.addEventListener("click", async () => {
+      if (!bookingTargetLocation) return;
+
+      clearBookingError();
+
+      const startMin = Number(bookingStart.value);
+      const endMin = Number(bookingEnd.value);
+
+      if (!(startMin >= DAY_START && endMin <= DAY_END && startMin < endMin)) {
+        showBookingError("Please choose a valid time between 09:00 and 17:00.");
+        return;
+      }
+
+      try {
+        await createBooking(bookingTargetLocation, startMin, endMin);
+        await refreshBookings();
+        // Refresh pills immediately (search list & details)
+        // easiest: re-render details pills by calling showDetails(currentDetailsLocation) if open:
+        if (currentDetailsLocation) showDetails(currentDetailsLocation);
+
+        renderExistingBookingsForLocation(bookingTargetLocation);
+        closeBookingModal();
+      } catch (e) {
+        showBookingError(e.message);
+      }
+    });
+
+    const activeBookingsList = document.getElementById("active-bookings-list");
+
+    function renderActiveBookingsCard() {
+      const me = myUsername();
+      const mine = bookingsCache
+        .filter(b => b.username === me)
+        .sort((a,b) => (a.date+a.startMin) < (b.date+b.startMin) ? -1 : 1);
+
+      activeBookingsList.innerHTML = "";
+
+      if (mine.length === 0) {
+        activeBookingsList.innerHTML = `<div style="opacity:.7;">No active bookings.</div>`;
+        return;
+      }
+
+      for (const b of mine) {
+        const row = document.createElement("div");
+        row.className = "active-booking-row";
+
+        const left = document.createElement("div");
+        const link = document.createElement("button");
+        link.className = "active-booking-link";
+        link.textContent = b.locationName || b.locationId;
+        link.onclick = async () => {
+          // Navigate to location and open details
+          try {
+            const loc = await mapsindoors.services.LocationsService.getLocation(b.locationId);
+            if (loc) handleLocationClick(loc);
+          } catch {
+            // fallback: just fly to current marker/venue; optional
+          }
+        };
+
+        const time = document.createElement("div");
+        time.style.opacity = "0.75";
+        time.style.fontSize = "0.9rem";
+        time.textContent = `${b.date} • ${minutesToHHMM(b.startMin)}–${minutesToHHMM(b.endMin)}`;
+
+        left.appendChild(link);
+        left.appendChild(time);
+
+        const x = document.createElement("button");
+        x.className = "active-booking-x";
+        x.innerHTML = "&times;";
+        x.title = "Cancel booking";
+        x.onclick = async () => {
+          try {
+            await deleteBooking(b.id);
+            await refreshBookings();
+            if (currentDetailsLocation) showDetails(currentDetailsLocation);
+          } catch (e) {
+            console.error(e);
+          }
+        };
+
+        row.appendChild(left);
+        row.appendChild(x);
+        activeBookingsList.appendChild(row);
+      }
     }
 
 }
