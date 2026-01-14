@@ -79,6 +79,10 @@ html, body {
     background-color: #f0f0f0; /* Highlight on hover */
 }
 
+#search-results li.back-row {
+    font-weight: 600;
+}
+
 /* --- New Styles for Location Details UI elements --- */
 
 /* Styles for the new UI wrappers within #search-container */
@@ -247,4 +251,71 @@ html, body {
     color: #7a1d1d;
     border: 1px solid #f2b9b9;
     font-size: 0.95rem;
+}
+
+/* Search dropdown category rows */
+#search-results li.category-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+#search-results li.category-row .category-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#search-results li.category-row .count-pill {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.08);
+    color: rgba(0,0,0,0.75);
+    flex: 0 0 auto;
+}
+
+/* Location result rows with pills */
+#search-results li.location-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+#search-results li.location-row .location-left {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#search-results li.location-row .pill-group {
+    display: flex;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+#search-results li.location-row .pill {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.08);
+    color: rgba(0,0,0,0.75);
+}
+
+/* Details pills row */
+.details-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 6px 0 10px 0;
+}
+
+.details-pills .pill {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.08);
+    color: rgba(0,0,0,0.75);
 }

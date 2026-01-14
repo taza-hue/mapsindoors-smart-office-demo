@@ -9,6 +9,12 @@ const authFormEl = document.getElementById("auth-form");
 const authErrorEl = document.getElementById("auth-error");
 const usernameEl = document.getElementById("auth-username");
 const passkeyEl = document.getElementById("auth-passkey");
+const searchInputElement = document.getElementById('search-input');
+const searchResultsElement = document.getElementById('search-results');
+
+// --- Category dropdown support ---
+
+let mapsIndoorsInstance = null;
 
 // Safety: ensure credentials file loaded
 function getCredentialsList() {
@@ -114,7 +120,7 @@ function initMap() {
 
     const mapViewInstance = new mapsindoors.mapView.MapboxV3View(mapViewOptions);
 
-    const mapsIndoorsInstance = new mapsindoors.MapsIndoors({
+    mapsIndoorsInstance = new mapsindoors.MapsIndoors({
         mapView: mapViewInstance,
         venue: 'e8dbfc6e2d464b69be2ef076',
     });
@@ -140,22 +146,268 @@ function initMap() {
     }
     mapsIndoorsInstance.on('click', handleLocationClick);
 
+    function getFloorNumber(location) {
+        const f = location?.properties?.floor;
+        if (f === 0) return 0;
+        if (f === null || f === undefined || f === "") return null;
+        const n = Number(f);
+        return Number.isFinite(n) ? n : f; // handles numeric or string
+    }
+
+    function getLocationTypeLabel(location) {
+        const p = location?.properties || {};
+
+        // Prefer explicit type fields if present
+        if (typeof p.type === "string" && p.type.trim()) return p.type.trim();
+        if (typeof p.locationType === "string" && p.locationType.trim()) return p.locationType.trim();
+
+        // Fall back to first category if that’s what your data uses
+        if (Array.isArray(p.categories) && p.categories.length > 0) {
+            const first = p.categories[0];
+            if (typeof first === "string" && first.trim()) return first.trim();
+            if (first?.name) return String(first.name);
+        }
+
+        return "Other";
+    }
+
+    function createPill(text) {
+        const span = document.createElement("span");
+        span.classList.add("pill");
+        span.textContent = text;
+        return span;
+    }
+
+    function createLocationListItem(location, onClick) {
+        const li = document.createElement("li");
+        li.classList.add("location-row");
+
+        const left = document.createElement("span");
+        left.classList.add("location-left");
+        left.textContent = location.properties?.name || "(Unnamed)";
+
+        const right = document.createElement("span");
+        right.classList.add("pill-group");
+
+        const floor = getFloorNumber(location);
+        if (floor !== null) right.appendChild(createPill(`Floor ${floor}`));
+
+        const typeLabel = getLocationTypeLabel(location);
+        if (typeLabel) right.appendChild(createPill(typeLabel));
+
+        li.appendChild(left);
+        li.appendChild(right);
+
+        li.addEventListener("click", onClick);
+        return li;
+    }
+
+    // --- Category drill-down state ---
+    let currentDropdownMode = "categories"; // "categories" | "locations"
+    let currentCategory = null;
+
+    function getCategoryNameFromLocation(location) {
+        const p = location?.properties || {};
+
+        // Most common: properties.categories (array of strings)
+        if (Array.isArray(p.categories) && p.categories.length > 0) {
+            const first = p.categories[0];
+            if (typeof first === "string" && first.trim()) return first.trim();
+            if (first?.name) return String(first.name);
+        }
+
+        // Other possible fields (depends on data model)
+        if (typeof p.type === "string" && p.type.trim()) return p.type.trim();
+        if (typeof p.locationType === "string" && p.locationType.trim()) return p.locationType.trim();
+
+        return "Other";
+    }
+
+    async function showCategoriesDropdownIfEmpty() {
+
+        currentDropdownMode = "categories";
+        currentCategory = null;
+
+        const query = searchInputElement.value.trim();
+        if (query.length > 0) return; // only show categories when empty
+
+        // Clear any previous location highlight/selection
+        mapsIndoorsInstance.highlight();
+        mapsIndoorsInstance.deselectLocation();
+
+        const allLocations = await loadAllVenueLocations();
+
+        // Group by category
+        const counts = new Map();
+        for (const loc of allLocations) {
+            const cat = getCategoryNameFromLocation(loc);
+            counts.set(cat, (counts.get(cat) || 0) + 1);
+        }
+
+        const categoriesWithCounts = [...counts.entries()]
+            .map(([name, count]) => ({ name, count }))
+            .filter(x => x.count > 0);
+
+        renderCategoryDropdown(categoriesWithCounts);
+    }
+
+    async function loadAllVenueLocations() {
+        if (allVenueLocationsCache) return allVenueLocationsCache;
+
+        const currentVenue = mapsIndoorsInstance.getVenue();
+        const venueName = currentVenue ? currentVenue.name : undefined;
+
+        // Try to fetch all locations for venue (no q)
+        try {
+            allVenueLocationsCache = await mapsindoors.services.LocationsService.getLocations({
+                venue: venueName
+            });
+            return allVenueLocationsCache;
+        } catch (e) {
+            // Fallback: some setups require q
+            allVenueLocationsCache = await mapsindoors.services.LocationsService.getLocations({
+                q: "",
+                venue: venueName
+            });
+            return allVenueLocationsCache;
+        }
+    }
+
+    function renderCategoryDropdown(categoriesWithCounts) {
+        searchResultsElement.innerHTML = "";
+
+        // Sort: largest count first, then name
+        categoriesWithCounts.sort((a, b) => {
+            if (b.count !== a.count) return b.count - a.count;
+            return a.name.localeCompare(b.name);
+        });
+
+        categoriesWithCounts.forEach(({ name, count }) => {
+            const li = document.createElement("li");
+            li.classList.add("category-row");
+
+            const left = document.createElement("span");
+            left.classList.add("category-name");
+            left.textContent = name;
+
+            const pill = document.createElement("span");
+            pill.classList.add("count-pill");
+            pill.textContent = String(count);
+
+            li.appendChild(left);
+            li.appendChild(pill);
+
+            // ✅ Click → drill-down + highlight
+            li.addEventListener("click", () => openLocationsForCategory(name));
+
+            searchResultsElement.appendChild(li);
+        });
+
+        searchResultsElement.classList.remove("hidden");
+    }
+
+    function openCategoriesDropdown() {
+        currentDropdownMode = "categories";
+        currentCategory = null;
+        showCategoriesDropdownIfEmpty(); // uses empty query logic
+    }
+
+    function openLocationsForCategory(categoryName) {
+        currentDropdownMode = "locations";
+        currentCategory = categoryName;
+
+        // Get locations from cache and filter by category
+        loadAllVenueLocations().then(allLocations => {
+            const matching = allLocations.filter(loc => getCategoryNameFromLocation(loc) === categoryName);
+
+            // Highlight all matching
+            mapsIndoorsInstance.highlight(matching.map(l => l.id));
+
+            renderLocationsDropdown(categoryName, matching);
+        });
+    }
+
+    function renderLocationsDropdown(categoryName, locations) {
+        searchResultsElement.innerHTML = "";
+
+        // Back row
+        const back = document.createElement("li");
+        back.classList.add("back-row");
+        back.textContent = "← Back to categories";
+        back.addEventListener("click", () => {
+            mapsIndoorsInstance.highlight(); // clear highlight
+            openCategoriesDropdown();
+        });
+        searchResultsElement.appendChild(back);
+
+        // Header-ish row (optional, can remove if you want)
+        const header = document.createElement("li");
+        header.style.opacity = "0.75";
+        header.style.cursor = "default";
+        header.textContent = `${categoryName} (${locations.length})`;
+        searchResultsElement.appendChild(header);
+
+        // Sort locations by name
+        const sorted = [...locations].sort((a, b) =>
+            (a.properties?.name || "").localeCompare(b.properties?.name || "")
+        );
+
+        sorted.forEach(location => {
+            const item = createLocationListItem(location, () => {
+                handleLocationClick(location);
+                searchResultsElement.classList.add("hidden"); // optional
+            });
+            searchResultsElement.appendChild(item);
+        });
+
+        searchResultsElement.classList.remove("hidden");
+    }
+
+
     /** Search Functionality **/
     const searchInputElement = document.getElementById('search-input');
     const searchResultsElement = document.getElementById('search-results');
     searchResultsElement.classList.add('hidden');
 
+    let allVenueLocationsCache = null;
+
     searchInputElement.addEventListener('input', onSearch);
+    searchInputElement.addEventListener("focus", () => {
+        if (searchInputElement.value.trim().length === 0) openCategoriesDropdown();
+    });
+    searchInputElement.addEventListener("click", () => {
+        if (searchInputElement.value.trim().length === 0) openCategoriesDropdown();
+    });
 
     function onSearch() {
         const query = searchInputElement.value;
+        const trimmed = query.trim();
+
+        mapsIndoorsInstance.highlight();
+        mapsIndoorsInstance.deselectLocation();
+
+        if (trimmed.length === 0) {
+            openCategoriesDropdown();
+            return;
+        }
+
+        if (trimmed.length < 3) {
+            return;
+        }
         const currentVenue = mapsIndoorsInstance.getVenue();
 
         mapsIndoorsInstance.highlight();
         mapsIndoorsInstance.deselectLocation();
 
+        if (query.length === 0) {
+            // Empty query: show category dropdown
+            showCategoriesDropdownIfEmpty();
+            return;
+        }
+
         if (query.length < 3) {
-            searchResultsElement.classList.add('hidden');
+            // Not enough to search locations yet; keep dropdown visible if already shown
+            // (optional: you can hide it here if you prefer)
             return;
         }
 
@@ -173,15 +425,10 @@ function initMap() {
             }
 
             locations.forEach(location => {
-                const listElement = document.createElement('li');
-                listElement.innerHTML = location.properties.name;
-                listElement.dataset.locationId = location.id;
-
-                listElement.addEventListener('click', function () {
+                const item = createLocationListItem(location, () => {
                     handleLocationClick(location);
                 });
-
-                searchResultsElement.appendChild(listElement);
+                searchResultsElement.appendChild(item);
             });
 
             searchResultsElement.classList.remove('hidden');
@@ -226,6 +473,7 @@ function initMap() {
     /** Location Details **/
     const detailsNameElement = document.getElementById('details-name');
     const detailsDescriptionElement = document.getElementById('details-description');
+    const detailsPillsElement = document.getElementById('details-pills');
     const detailsCloseButton = document.getElementById('details-close');
 
     detailsCloseButton.addEventListener('click', () => {
@@ -237,8 +485,21 @@ function initMap() {
 
     function showDetails(location) {
         currentDetailsLocation = location;
-        detailsNameElement.textContent = location.properties.name;
-        detailsDescriptionElement.textContent = location.properties.description || 'No description available.';
+
+        detailsNameElement.textContent = location.properties?.name || "(Unnamed)";
+
+        // Build pills
+        detailsPillsElement.innerHTML = "";
+
+        const floor = getFloorNumber(location);
+        if (floor !== null) detailsPillsElement.appendChild(createPill(`Floor ${floor}`));
+
+        const typeLabel = getLocationTypeLabel(location);
+        if (typeLabel) detailsPillsElement.appendChild(createPill(typeLabel));
+
+        detailsDescriptionElement.textContent =
+            location.properties?.description || "No description available.";
+
         showDetailsUI();
     }
 
