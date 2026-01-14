@@ -943,8 +943,8 @@ function initMap() {
         const center = mapViewOptions.center; // { lng, lat }
 
         // Roughly ~200–400m spread depending on latitude; tweak as desired
-        const maxLatOffset = 0.0012; // ~133m
-        const maxLngOffset = 0.0012; // ~100–120m in Austin-ish lat
+        const maxLatOffset = 0.0009; // ~133m
+        const maxLngOffset = 0.0009; // ~100–120m in Austin-ish lat
 
         const lat = center.lat + (Math.random() * 2 - 1) * maxLatOffset;
         const lng = center.lng + (Math.random() * 2 - 1) * maxLngOffset;
