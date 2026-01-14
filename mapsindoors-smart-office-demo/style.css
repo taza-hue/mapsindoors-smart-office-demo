@@ -696,3 +696,342 @@ html, body {
   color: rgba(190, 70, 10, 1);
   border: 1px solid rgba(255, 106, 19, 0.35);
 }
+
+/* ============================
+   Professional theme override
+   (fonts, colors, shapes only)
+   ============================ */
+
+:root {
+  /* Typography */
+  --ui-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+
+  /* Brand + neutrals */
+  --brand: #0B5FA5;             /* professional blue */
+  --brand-2: #0A4E86;           /* darker hover */
+  --text: #111827;              /* near-black */
+  --muted: #6B7280;             /* slate */
+  --border: rgba(17, 24, 39, 0.12);
+  --surface: rgba(255, 255, 255, 0.94);
+  --surface-solid: #FFFFFF;
+  --surface-subtle: rgba(17, 24, 39, 0.04);
+
+  /* Shapes */
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --radius-pill: 999px;
+
+  /* Focus ring */
+  --ring: rgba(11, 95, 165, 0.30);
+}
+
+/* Global font + base color */
+html, body {
+  font-family: var(--ui-font);
+  color: var(--text);
+}
+
+/* Links (including your clickable "Nearest" and booking links) */
+a, .active-booking-link {
+  color: var(--brand);
+}
+a:hover, .active-booking-link:hover {
+  color: var(--brand-2);
+}
+
+/* Cards (details, user location, bookings, modals) */
+.user-location-card,
+.active-bookings-card,
+.booking-modal,
+#details-ui,
+#directions-ui {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+/* Subtle frosted look where supported */
+.user-location-card,
+.active-bookings-card,
+.booking-modal {
+  backdrop-filter: blur(8px);
+}
+
+/* Titles */
+.user-location-title,
+.active-bookings-title,
+.booking-modal h3,
+#details-ui h3,
+#directions-ui h3 {
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+/* Muted secondary text */
+.user-location-meta,
+.booking-item .muted,
+.active-booking-row div,
+#details-description,
+#directions-steps,
+.back-row,
+#search-results li header,
+#origin-results li header {
+  color: var(--muted);
+}
+
+/* Inputs */
+input, select, textarea {
+  font-family: var(--ui-font);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(11, 95, 165, 0.45);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* Buttons: consistent professional styling (no size/spacing changes here) */
+.details-button,
+.booking-actions button,
+.user-location-actions button {
+  font-family: var(--ui-font);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+  background: rgba(17, 24, 39, 0.04);
+  color: var(--text);
+}
+
+.details-button:hover,
+.booking-actions button:hover,
+.user-location-actions button:hover {
+  background: rgba(17, 24, 39, 0.06);
+}
+
+/* Primary buttons */
+.details-action-button,
+#booking-confirm {
+  background: var(--brand);
+  border-color: rgba(11, 95, 165, 0.65);
+  color: #fff;
+}
+
+.details-action-button:hover,
+#booking-confirm:hover {
+  background: var(--brand-2);
+}
+
+/* Disabled controls */
+button:disabled,
+input:disabled,
+select:disabled {
+  opacity: 0.55;
+}
+
+/* Dropdown lists (search/origin results) */
+#search-results,
+#origin-results {
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+#search-results li,
+#origin-results li {
+  color: var(--text);
+}
+
+#search-results li:hover,
+#origin-results li:hover {
+  background: rgba(11, 95, 165, 0.06);
+}
+
+/* Pills (base) */
+.pill {
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: rgba(17, 24, 39, 0.06);
+  color: rgba(17, 24, 39, 0.78);
+}
+
+/* Availability pills (make them more "SaaS professional") */
+.pill-available {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.32);
+  color: rgba(4, 120, 87, 1);
+}
+
+.pill-booked {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.30);
+  color: rgba(185, 28, 28, 1);
+}
+
+/* Temperature pills: nudge toward consistent palette (keep your classes) */
+.pill-temp-cold {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.30);
+  color: rgba(3, 105, 161, 1);
+}
+.pill-temp-mild {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: rgba(4, 120, 87, 1);
+}
+.pill-temp-warm {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.30);
+  color: rgba(146, 64, 14, 1);
+}
+.pill-temp-hot {
+  background: rgba(249, 115, 22, 0.14);
+  border-color: rgba(249, 115, 22, 0.30);
+  color: rgba(154, 52, 18, 1);
+}
+
+/* Occupancy pills: consistent with availability visual language */
+.pill-occ-low {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.28);
+  color: rgba(3, 105, 161, 1);
+}
+.pill-occ-mid {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: rgba(4, 120, 87, 1);
+}
+.pill-occ-high {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.30);
+  color: rgba(146, 64, 14, 1);
+}
+.pill-occ-full {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.30);
+  color: rgba(185, 28, 28, 1);
+}
+
+/* Overlay (booking modal) */
+.booking-overlay {
+  background: rgba(17, 24, 39, 0.55);
+}
+
+/* Small “x” buttons */
+.active-booking-x {
+  color: rgba(17, 24, 39, 0.70);
+}
+.active-booking-x:hover {
+  color: rgba(17, 24, 39, 0.95);
+}
+
+/* ===============================
+   Fix borders touching content
+   (adds inner padding only)
+   =============================== */
+
+/* Search dropdown containers */
+#search-results,
+#origin-results {
+  padding: 6px; /* gives breathing room from outer border */
+}
+
+/* Each result row / category row */
+#search-results li,
+#origin-results li {
+  padding: 10px 12px; /* ensures text never touches row edges */
+}
+
+/* "Back to categories" row */
+#search-results .back-row,
+#origin-results .back-row {
+  padding: 10px 12px;
+}
+
+/* Pills container: keep pills off the edges when wrapped */
+.location-row .pill-group {
+  padding-top: 2px; /* tiny breathing room when it drops to next line */
+}
+
+/* Details + directions panels: keep content away from card border */
+#details-ui,
+#directions-ui {
+  padding: 14px; /* stops border hugging text */
+}
+
+/* Inputs inside directions/details/search */
+#details-ui input,
+#directions-ui input,
+#search-input,
+#origin-input,
+#destination-input,
+input[type="text"] {
+  padding: 10px 12px;
+}
+
+/* Booking modal inner content */
+.booking-modal {
+  padding: 16px;
+}
+
+/* User location indicator block */
+.user-location-indicator {
+  padding: 12px 14px;
+}
+
+/* =====================================
+   Eliminate horizontal scrollbars
+   ===================================== */
+
+/* 1) Never allow horizontal scrolling anywhere */
+html, body {
+  overflow-x: hidden;
+}
+
+/* 2) Ensure all panels/cards clip horizontal overflow */
+#details-ui,
+#directions-ui,
+.user-location-card,
+.active-bookings-card,
+.booking-modal,
+#search-results,
+#origin-results {
+  overflow-x: hidden;
+}
+
+/* 3) Fix flex children that cause overflow */
+.location-row,
+.location-left,
+.pill-group {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* 4) Ensure pills can wrap instead of forcing width */
+.pill-group {
+  flex-wrap: wrap;
+}
+
+/* 5) Prevent buttons from exceeding container width */
+.details-button,
+.booking-actions button,
+.user-location-actions button {
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+/* 6) Inputs should never overflow their containers */
+input,
+select,
+textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 7) Safety net: clip any accidental overflow */
+* {
+  box-sizing: border-box;
+}
+
