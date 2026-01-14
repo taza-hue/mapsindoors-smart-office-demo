@@ -1,0 +1,3 @@
+Mapbox Access Token: pk.eyJ1IjoibWFwc3Blb3BsZSIsImEiOiJjbDc0ZDFsMjgwc25vM29tYWlnMXM1eWNzIn0.LGBv5axS_BuyVF4b4yK0_Q, 
+MapsIndoors API Key: 02c329e6777d431a88480a09,
+MapsIndoors VenueID: e8dbfc6e2d464b69be2ef076

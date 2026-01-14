@@ -1,0 +1,46 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapsIndoors</title>
+    <link rel="stylesheet" href="style.css">
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css' rel='stylesheet' />
+    <script src="https://app.mapsindoors.com/mapsindoors/js/sdk/4.41.0/mapsindoors-4.41.0.js.gz"
+            integrity="sha384-3lk3cwVPj5MpUyo5T605mB0PMHLLisIhNrSREQsQHjD9EXkHBjz9ETgopmTbfMDc"
+            crossorigin="anonymous"></script>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js'></script>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="panel">
+        <div id="search-ui" class="flex-column">
+            <input type="text" id="search-input" placeholder="Search for a location...">
+            <ul id="search-results"></ul>
+        </div>
+        <div id="details-ui" class="hidden">
+            <h3 id="details-name"></h3>
+            <p id="details-description"></p>
+            <button id="details-directions" class="details-button details-action-button">Get Directions</button>
+            <button id="details-close" class="details-button">Close</button>
+        </div>
+        <div id="directions-ui" class="hidden flex-column">
+            <h3>Directions</h3>
+            <div class="directions-inputs">
+                <input type="text" id="origin-input" placeholder="Choose origin...">
+                <ul id="origin-results" class="directions-results-list"></ul>
+                <input type="text" id="destination-input" placeholder="Choose destination..." disabled>
+            </div>
+            <button id="get-directions" class="details-button details-action-button">Show Route</button>
+            <div class="directions-step-nav">
+                <span id="step-indicator"></span>
+                <button id="prev-step" class="details-button">Previous</button>
+                <button id="next-step" class="details-button">Next</button>
+            </div>
+            <button id="directions-close" class="details-button">Close Directions</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

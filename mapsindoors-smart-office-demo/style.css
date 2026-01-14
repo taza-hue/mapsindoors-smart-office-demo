@@ -1,0 +1,163 @@
+/* style.css */
+
+/* Use flexbox for the main layout */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent scrollbars if map is full size */
+    display: flex;
+    flex-direction: column; /* Stack children vertically if needed later */
+}
+
+/* Style for the map container */
+#map {
+  /* Make map fill available space */
+  flex-grow: 1;
+  width: 100%; /* Make map fill width */
+  margin: 0;
+  padding: 0;
+}
+
+/* Style for the information panel container */
+.panel {
+    position: absolute; /* Position over the map */
+    top: 10px; /* Distance from the top */
+    left: 10px; /* Distance from the left */
+    z-index: 10; /* Ensure it's above the map and other elements */
+    background-color: white; /* White background for readability */
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Add a subtle shadow */
+    max-height: 80%; /* Limits max-height to prevent overflow with details */
+    overflow-y: auto; /* Add scroll if content exceeds max-height */
+    border: 1px solid #ccc; /* Add border for clarity */
+    width: 300px;
+}
+
+/* Class to apply flex display and column direction */
+.flex-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Space between elements */
+}
+
+/* Class to hide elements */
+.hidden {
+    display: none;
+}
+
+/* Style for the search input field */
+#search-input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+/* Style for the search results list */
+#search-results {
+    list-style: none; /* Remove default list bullets */
+    padding: 0;
+    margin: 0;
+}
+
+/* Style for individual search result items */
+#search-results li {
+    padding: 8px 0;
+    cursor: pointer; /* Indicate clickable items */
+    border-bottom: 1px solid #eee; /* Separator line */
+}
+
+/* Style for the last search result item (no bottom border) */
+#search-results li:last-child {
+    border-bottom: none;
+}
+
+/* Hover effect for search result items */
+#search-results li:hover {
+    background-color: #f0f0f0; /* Highlight on hover */
+}
+
+/* --- New Styles for Location Details UI elements --- */
+
+/* Styles for the new UI wrappers within #search-container */
+#search-ui,
+#details-ui {
+    width: 100%; /* Ensure they fill the container's width */
+    /* display: flex and flex-direction are controlled by .flex-column-container class via JS */
+}
+
+/* Style for the location name in details */
+#details-name {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+/* Style for the location description in details */
+#details-description {
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* Style for general buttons within details */
+.details-button {
+     padding: 8px;
+     border: none;
+     border-radius: 4px;
+     font-size: 0.9rem;
+     cursor: pointer;
+     transition: background-color 0.3s ease;
+}
+
+/* Specific style for the Close button */
+#details-close {
+    background-color: #ccc; /* Grey */
+    color: #333;
+}
+ #details-close:hover {
+     background-color: #bbb;
+ }
+
+/* Directions panel specific */
+#directions-ui {
+    width: 100%;
+}
+.directions-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.directions-results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 120px;
+    overflow-y: auto;
+}
+.directions-results-list li {
+    padding: 8px 0;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+.directions-results-list li:last-child {
+    border-bottom: none;
+}
+.directions-results-list li:hover {
+    background-color: #f0f0f0;
+}
+
+.directions-step-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+#step-indicator {
+    grid-column: span 2;
+}
