@@ -671,3 +671,28 @@ html, body {
     flex-wrap: wrap;              /* pills can wrap too */
     gap: 6px;
 }
+
+/* Occupancy pills */
+.pill-occ-low {
+  background: rgba(0, 151, 169, 0.18);
+  color: rgba(0, 120, 135, 1);
+  border: 1px solid rgba(0, 151, 169, 0.35);
+}
+
+.pill-occ-mid {
+  background: rgba(0, 155, 119, 0.18);
+  color: rgba(0, 120, 90, 1);
+  border: 1px solid rgba(0, 155, 119, 0.35);
+}
+
+.pill-occ-high {
+  background: rgba(255, 205, 0, 0.22);
+  color: rgba(130, 95, 0, 1);
+  border: 1px solid rgba(255, 205, 0, 0.45);
+}
+
+.pill-occ-full {
+  background: rgba(255, 106, 19, 0.18);
+  color: rgba(190, 70, 10, 1);
+  border: 1px solid rgba(255, 106, 19, 0.35);
+}

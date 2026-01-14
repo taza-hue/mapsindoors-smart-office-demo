@@ -267,6 +267,10 @@ function initMap() {
 
         right.appendChild(createTempPill(location));
 
+        // Occupancy (non-visitor only)
+        const occPill = createOccupancyPill(location);
+        if (occPill) right.appendChild(occPill);
+
         li.appendChild(left);
         li.appendChild(right);
 
@@ -611,6 +615,9 @@ function initMap() {
         }
 
         detailsPillsElement.appendChild(createTempPill(location));
+
+        const occPill = createOccupancyPill(location);
+        if (occPill) detailsPillsElement.appendChild(occPill);
 
         detailsDescriptionElement.textContent =
             location.properties?.description || "No description available.";
@@ -1411,5 +1418,143 @@ function initMap() {
       }
     }, 60 * 1000);
 
+    function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+    // realistic-ish “busy curve” for an office day
+    function officeBusyFactor(minutes) {
+      // minutes since midnight
+      // 8:00 ramp up, 11:30 peak, 13:30 slight dip, 15:30 medium, 17:30 down
+      const t = minutes;
+
+      const ramp = (x, a, b) => clamp((x - a) / (b - a), 0, 1);
+
+      const morning = ramp(t, 8 * 60, 10 * 60);          // 0→1
+      const middayPeak = 1 - Math.abs((t - (11.5 * 60)) / (2.0 * 60)); // triangle peak ~11:30
+      const lunchDip = 1 - 0.35 * ramp(t, 12 * 60, 13.5 * 60);         // dip after 12
+      const afternoon = 0.85 - 0.25 * ramp(t, 15 * 60, 17.5 * 60);     // taper later
+
+      const base = clamp(0.15 + 0.75 * clamp(middayPeak, 0, 1), 0, 1);
+      return clamp(base * (0.35 + 0.65 * morning) * lunchDip * afternoon, 0, 1);
+    }
+
+    function estimateCapacityFromType(typeLabel) {
+      const t = String(typeLabel || "").toLowerCase();
+
+      // meeting rooms
+      if (t.includes("meeting")) {
+        if (t.includes("small")) return 4;
+        if (t.includes("medium")) return 8;
+        if (t.includes("large")) return 14;
+        return 8;
+      }
+
+      // desks / workstations tend to be 1-seat
+      if (t.includes("desk") || t.includes("workstation")) return 1;
+
+      // phone booths / focus rooms
+      if (t.includes("phone") || t.includes("booth") || t.includes("focus")) return 1;
+
+      // lounge / cafe / kitchen
+      if (t.includes("lounge")) return 10;
+      if (t.includes("cafe") || t.includes("kitchen") || t.includes("pantry")) return 12;
+
+      // training / event rooms
+      if (t.includes("training") || t.includes("auditorium") || t.includes("event")) return 30;
+
+      // default: “some people might be here”
+      return 6;
+    }
+
+    // deterministic “random” 0..1 based on (seed, bucket)
+    function seededNoise01(seed, bucket) {
+      const x = (seed ^ (bucket * 2654435761)) >>> 0;
+      return ((x % 10000) / 10000);
+    }
+
+    function getDynamicOccupancy(location) {
+      // Visitors should not see occupancy at all
+      if (isVisitor()) return null;
+
+      const typeLabel = getLocationTypeLabel(location);
+      const cap = estimateCapacityFromType(typeLabel);
+
+      // Rooms like corridors/restrooms shouldn't show occupancy as “people in room”
+      // Only show for “room-like” or seat-like places
+      const t = String(typeLabel || "").toLowerCase();
+      const show =
+        t.includes("meeting") ||
+        t.includes("desk") ||
+        t.includes("workstation") ||
+        t.includes("lounge") ||
+        t.includes("cafe") ||
+        t.includes("kitchen") ||
+        t.includes("training") ||
+        t.includes("booth") ||
+        t.includes("focus") ||
+        t.includes("event") ||
+        t.includes("auditorium");
+
+      if (!show) return null;
+
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+
+      // Stable per-location seed
+      const key = String(location?.id || location?.properties?.name || "unknown");
+      const seed = hashStringToInt(key);
+
+      // Change every 5 minutes (“live” but not jittery)
+      const bucket = Math.floor(Date.now() / (5 * 60 * 1000));
+      const n = seededNoise01(seed, bucket);        // 0..1
+      const n2 = seededNoise01(seed + 17, bucket);  // second noise channel
+
+      // Busy factor: 0..1, higher around midday
+      const busy = officeBusyFactor(minutes);
+
+      // Different room types respond differently to “busy”
+      let sensitivity = 1.0;
+      if (t.includes("desk") || t.includes("workstation")) sensitivity = 0.85;
+      if (t.includes("meeting")) sensitivity = 1.10;
+      if (t.includes("lounge") || t.includes("cafe") || t.includes("kitchen")) sensitivity = 1.25;
+
+      const expected = cap * clamp(0.10 + busy * sensitivity, 0, 1);
+
+      // Add variation while staying realistic
+      // Meeting rooms: often 0 or “clustered”, desks: often 0/1
+      let occ = Math.round(expected + (n - 0.5) * cap * 0.35);
+
+      if (cap === 1) {
+        // For single-seat places, decide 0/1 based on busy + noise
+        const p = clamp(0.05 + busy * 0.75 + (n2 - 0.5) * 0.15, 0, 1);
+        occ = (n < p) ? 1 : 0;
+      } else if (t.includes("meeting")) {
+        // Meetings are “bursty”: either empty or a few people
+        const burst = clamp((busy * 0.9) + (n2 - 0.5) * 0.25, 0, 1);
+        occ = (n < 0.35) ? 0 : Math.round(cap * clamp(0.25 + 0.6 * burst, 0, 1));
+      }
+
+      occ = clamp(occ, 0, cap);
+
+      return { occ, cap };
+    }
+
+    function occupancyClass(occ, cap) {
+      if (cap <= 0) return "pill-occ-low";
+      const ratio = occ / cap;
+      if (ratio === 0) return "pill-occ-low";
+      if (ratio < 0.5) return "pill-occ-mid";
+      if (ratio < 0.85) return "pill-occ-high";
+      return "pill-occ-full";
+    }
+
+    function createOccupancyPill(location) {
+      const data = getDynamicOccupancy(location);
+      if (!data) return null;
+
+      const { occ, cap } = data;
+      const pill = createPill(`Occupancy ${occ}/${cap}`);
+      pill.classList.add(occupancyClass(occ, cap));
+      return pill;
+    }
 
 }
