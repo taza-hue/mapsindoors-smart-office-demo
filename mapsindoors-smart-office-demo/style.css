@@ -44,7 +44,7 @@ html, body {
 
 /* Class to hide elements */
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 /* Style for the search input field */
@@ -160,4 +160,91 @@ html, body {
 
 #step-indicator {
     grid-column: span 2;
+}
+
+/* --- Auth overlay --- */
+.auth-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 9999; /* above map + panel */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 35px rgba(0,0,0,0.25);
+    padding: 18px 18px 16px 18px;
+}
+
+.auth-title {
+    margin: 0 0 6px 0;
+    font-size: 1.35rem;
+}
+
+.auth-subtitle {
+    margin: 0 0 14px 0;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.auth-label {
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.auth-user-types {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 0.95rem;
+}
+
+.auth-input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.auth-button {
+    margin-top: 4px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: #00587C; /* nice MapsPeople-ish */
+    color: white;
+    font-size: 1rem;
+}
+
+.auth-button:hover {
+    filter: brightness(0.95);
+}
+
+.auth-error {
+    padding: 10px;
+    border-radius: 8px;
+    background: #ffe7e7;
+    color: #7a1d1d;
+    border: 1px solid #f2b9b9;
+    font-size: 0.95rem;
 }

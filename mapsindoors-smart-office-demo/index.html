@@ -13,8 +13,43 @@
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js'></script>
 </head>
 <body>
+    <!-- Login Overlay -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-card">
+            <h2 class="auth-title">Office Map Access</h2>
+            <p class="auth-subtitle">Select a user type and enter your credentials to continue.</p>
+
+            <form id="auth-form" class="auth-form">
+                <div class="auth-row">
+                    <label class="auth-label">User type</label>
+                    <div class="auth-user-types">
+                        <label><input type="radio" name="userType" value="admin" required> Admin</label>
+                        <label><input type="radio" name="userType" value="employee" required> Employee</label>
+                        <label><input type="radio" name="userType" value="visitor" required> Visitor</label>
+                    </div>
+                </div>
+
+                <div class="auth-row">
+                    <label class="auth-label" for="auth-username">Username</label>
+                    <input id="auth-username" class="auth-input" type="text" autocomplete="username" required />
+                </div>
+
+                <div class="auth-row">
+                    <label class="auth-label" for="auth-passkey">Passkey</label>
+                    <input id="auth-passkey" class="auth-input" type="password" autocomplete="current-password" required />
+                </div>
+
+                <div id="auth-error" class="auth-error hidden"></div>
+
+                <button type="submit" class="auth-button">Enter</button>
+            </form>
+        </div>
+    </div>
+
     <div id="map"></div>
+
     <div class="panel">
+        <!-- (your existing panel markup unchanged) -->
         <div id="search-ui" class="flex-column">
             <input type="text" id="search-input" placeholder="Search for a location...">
             <ul id="search-results"></ul>
@@ -41,6 +76,9 @@
             <button id="directions-close" class="details-button">Close Directions</button>
         </div>
     </div>
+
+    <!-- IMPORTANT: load credentials before script.js -->
+    <script src="users/credentials.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
