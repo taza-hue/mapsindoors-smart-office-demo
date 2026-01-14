@@ -1,3 +1,15 @@
 {
-  "bookings": []
+  "bookings": [
+    {
+      "id": "0c7f1d0f-1b44-49f0-b40b-1a9484edc5aa",
+      "locationId": "314f5f6768cf42809ccc1abc",
+      "locationName": "Batman",
+      "startMin": 840,
+      "endMin": 960,
+      "date": "2026-01-14",
+      "username": "admin",
+      "userType": "admin",
+      "createdAt": "2026-01-14T11:46:47.594Z"
+    }
+  ]
 }

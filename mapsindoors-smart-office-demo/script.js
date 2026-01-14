@@ -1006,29 +1006,51 @@ function initMap() {
       return m >= DAY_START && m < DAY_END;
     }
 
+    function nowMinutes() {
+      const now = new Date();
+      return now.getHours() * 60 + now.getMinutes();
+    }
+
     function availabilityForLocationNow(location) {
+      // Visitors should not see availability at all
       if (isVisitor()) return null;
+
       if (!isBookableLocation(location)) return null;
 
-      // outside 9–5: you can choose to hide pill or show "Unavailable"
-      if (!isWithinBusinessHoursNow()) {
-        return { status: "available", label: "Available" }; // keep simple for demo
+      const date = todayISO();
+      const t = nowMinutes();
+
+      // Only consider today's bookings for this location
+      const locBookings = bookingsCache
+        .filter(b => b.date === date && b.locationId === location.id)
+        .slice()
+        .sort((a, b) => a.startMin - b.startMin);
+
+      // Find current booking if any
+      const current = locBookings.find(b => t >= b.startMin && t < b.endMin);
+
+      if (current) {
+        return {
+          status: "booked",
+          label: `Booked until ${minutesToHHMM(current.endMin)}`
+        };
       }
 
-      const date = todayISO();
-      const now = new Date();
-      const nowMin = now.getHours()*60 + now.getMinutes();
+      // Not currently booked — find the next booking after now
+      const next = locBookings.find(b => b.startMin > t);
 
-      const locId = location.id;
-      const booked = bookingsCache.some(b =>
-        b.date === date &&
-        b.locationId === locId &&
-        overlaps(nowMin, nowMin+1, b.startMin, b.endMin)
-      );
+      if (next) {
+        return {
+          status: "available",
+          label: `Available until ${minutesToHHMM(next.startMin)}`
+        };
+      }
 
-      return booked
-        ? { status: "booked", label: "Booked" }
-        : { status: "available", label: "Available" };
+      // No more bookings today
+      return {
+        status: "available",
+        label: "Available"
+      };
     }
 
     const bookingOverlay = document.getElementById("booking-overlay");
