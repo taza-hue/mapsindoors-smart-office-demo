@@ -119,10 +119,11 @@ function initMap() {
     mapsindoors.MapsIndoors.setMapsIndoorsApiKey('02c329e6777d431a88480a09');
 
     const mapViewInstance = new mapsindoors.mapView.MapboxV3View(mapViewOptions);
+    const VENUE_ID = 'dfea941bb3694e728df92d3d';
 
     mapsIndoorsInstance = new mapsindoors.MapsIndoors({
         mapView: mapViewInstance,
-        venue: 'e8dbfc6e2d464b69be2ef076',
+        venue: VENUE_ID,
     });
 
     /** Floor Selector **/
@@ -237,6 +238,15 @@ function initMap() {
 
         const allLocations = await loadAllVenueLocations();
 
+        if (!Array.isArray(allLocations) || allLocations.length === 0) {
+            searchResultsElement.innerHTML = "";
+            const li = document.createElement("li");
+            li.textContent = "No locations available.";
+            searchResultsElement.appendChild(li);
+            searchResultsElement.classList.remove("hidden");
+            return;
+        }
+
         // Group by category
         const counts = new Map();
         for (const loc of allLocations) {
@@ -251,25 +261,45 @@ function initMap() {
         renderCategoryDropdown(categoriesWithCounts);
     }
 
+    function normalizeLocationsResponse(res) {
+        if (Array.isArray(res)) return res;
+
+        // Sometimes APIs wrap results
+        if (res && Array.isArray(res.locations)) return res.locations;
+        if (res && Array.isArray(res.items)) return res.items;
+        if (res && Array.isArray(res.results)) return res.results;
+        if (res && Array.isArray(res.data)) return res.data;
+
+        return []; // safe fallback
+    }
+
     async function loadAllVenueLocations() {
         if (allVenueLocationsCache) return allVenueLocationsCache;
 
-        const currentVenue = mapsIndoorsInstance.getVenue();
-        const venueName = currentVenue ? currentVenue.name : undefined;
+        // If venue isn't ready yet, avoid accidental global fetch
+        const v = mapsIndoorsInstance?.getVenue?.();
+        if (!v) return [];
 
-        // Try to fetch all locations for venue (no q)
         try {
-            allVenueLocationsCache = await mapsindoors.services.LocationsService.getLocations({
-                venue: venueName
+            const res = await mapsindoors.services.LocationsService.getLocations({
+                venue: VENUE_ID // or whatever you're using
             });
+            allVenueLocationsCache = normalizeLocationsResponse(res);
             return allVenueLocationsCache;
-        } catch (e) {
-            // Fallback: some setups require q
-            allVenueLocationsCache = await mapsindoors.services.LocationsService.getLocations({
-                q: "",
-                venue: venueName
-            });
-            return allVenueLocationsCache;
+        } catch (e1) {
+            console.warn("loadAllVenueLocations failed (first attempt):", e1);
+            try {
+                const res2 = await mapsindoors.services.LocationsService.getLocations({
+                    q: "",
+                    venue: VENUE_ID
+                });
+                allVenueLocationsCache = normalizeLocationsResponse(res2);
+                return allVenueLocationsCache;
+            } catch (e2) {
+                console.error("loadAllVenueLocations failed (fallback):", e2);
+                allVenueLocationsCache = [];
+                return [];
+            }
         }
     }
 
@@ -367,6 +397,7 @@ function initMap() {
     /** Search Functionality **/
     const searchInputElement = document.getElementById('search-input');
     const searchResultsElement = document.getElementById('search-results');
+
     searchResultsElement.classList.add('hidden');
 
     let allVenueLocationsCache = null;
@@ -380,6 +411,11 @@ function initMap() {
     });
 
     function onSearch() {
+
+        if (!mapsIndoorsInstance) return;
+        const currentVenue = mapsIndoorsInstance.getVenue();
+        if (!currentVenue) return; // venue not loaded yet; avoid global search
+
         const query = searchInputElement.value;
         const trimmed = query.trim();
 
@@ -394,7 +430,6 @@ function initMap() {
         if (trimmed.length < 3) {
             return;
         }
-        const currentVenue = mapsIndoorsInstance.getVenue();
 
         mapsIndoorsInstance.highlight();
         mapsIndoorsInstance.deselectLocation();
@@ -411,7 +446,7 @@ function initMap() {
             return;
         }
 
-        const searchParameters = { q: query, venue: currentVenue ? currentVenue.name : undefined };
+        const searchParameters = { q: query, venue: VENUE_ID };
 
         mapsindoors.services.LocationsService.getLocations(searchParameters).then(locations => {
             searchResultsElement.innerHTML = null;
@@ -535,23 +570,34 @@ function initMap() {
         selectedOrigin = null;
         selectedDestination = destinationLocation;
         currentRoute = null;
-        destinationInputElement.value = destinationLocation.properties.name;
+
+        destinationInputElement.value = destinationLocation.properties?.name || "(Unnamed)";
         originInputElement.value = '';
         originResultsElement.innerHTML = '';
+        stepIndicator.textContent = '';
+
         hideSearchUI();
         hideDetailsUI();
         showDirectionsUI();
-        stepIndicator.textContent = '';
+
+        // ✅ If user location exists, lock origin to it; otherwise allow origin search
+        const originLocked = setOriginFromUserLocationIfAvailable();
+        if (!originLocked) enableOriginSearch();
     }
 
     originInputElement.addEventListener('input', onOriginSearch);
     function onOriginSearch() {
-        const query = originInputElement.value;
+
+        if (!mapsIndoorsInstance) return;
         const currentVenue = mapsIndoorsInstance.getVenue();
+        if (!currentVenue) return; // venue not loaded yet; avoid global search
+
+        if (originInputElement.disabled) return;
+        const query = originInputElement.value;
         originResultsElement.innerHTML = '';
         if (query.length < 3) return;
 
-        const searchParameters = { q: query, venue: currentVenue ? currentVenue.name : undefined };
+        const searchParameters = { q: query, venue: VENUE_ID };
 
         mapsindoors.services.LocationsService.getLocations(searchParameters).then(locations => {
             if (locations.length === 0) {
@@ -561,14 +607,12 @@ function initMap() {
                 return;
             }
             locations.forEach(location => {
-                const listElement = document.createElement('li');
-                listElement.textContent = location.properties.name;
-                listElement.addEventListener('click', () => {
+                const item = createLocationListItem(location, () => {
                     selectedOrigin = location;
-                    originInputElement.value = location.properties.name;
+                    originInputElement.value = location.properties?.name || "(Unnamed)";
                     originResultsElement.innerHTML = '';
                 });
-                originResultsElement.appendChild(listElement);
+                originResultsElement.appendChild(item);
             });
         });
     }
@@ -590,31 +634,50 @@ function initMap() {
             floor: selectedDestination.properties.floor
         };
 
-        const directionsService = new mapsindoors.services.DirectionsService();
-        const route = await directionsService.getRoute({ origin, destination });
-        currentRoute = route;
+        try {
+            stepIndicator.textContent = "Calculating route…";
 
-        if (directionsRenderer) directionsRenderer.setVisible(false);
+            const directionsService = new mapsindoors.services.DirectionsService();
+            const route = await directionsService.getRoute({ origin, destination });
 
-        directionsRenderer = new mapsindoors.directions.DirectionsRenderer({
-            mapsIndoors: mapsIndoorsInstance,
-            fitBounds: true,
-            strokeColor: '#4285f4',
-            strokeWeight: 5
-        });
+            // ✅ Validate route before using it
+            if (!route || !Array.isArray(route.legs) || route.legs.length === 0) {
+                currentRoute = null;
+                stepIndicator.textContent = "No route could be calculated for this origin/destination.";
+                return;
+            }
 
-        await directionsRenderer.setRoute(route);
-        directionsRenderer.setStepIndex(0, 0);
-        showCurrentStep();
+            currentRoute = route;
+
+            if (directionsRenderer) directionsRenderer.setVisible(false);
+
+            directionsRenderer = new mapsindoors.directions.DirectionsRenderer({
+                mapsIndoors: mapsIndoorsInstance,
+                fitBounds: true,
+                strokeColor: '#4285f4',
+                strokeWeight: 5
+            });
+
+            await directionsRenderer.setRoute(route);
+            directionsRenderer.setStepIndex(0, 0);
+            showCurrentStep();
+        } catch (err) {
+            console.error("Directions error:", err);
+            currentRoute = null;
+            stepIndicator.textContent = "Could not calculate route. Try a different origin.";
+        }
     });
 
     function showCurrentStep() {
-        if (currentRoute?.legs?.length < 1) return;
+        if (!currentRoute || !Array.isArray(currentRoute.legs) || currentRoute.legs.length < 1) {
+            stepIndicator.textContent = "No route available.";
+            return;
+        }
 
         const currentLegIndex = directionsRenderer.getLegIndex();
         const currentStepIndex = directionsRenderer.getStepIndex();
         const legs = currentRoute.legs;
-        const steps = legs[currentLegIndex].steps;
+        const steps = legs[currentLegIndex]?.steps || [];
 
         if (steps.length === 0) {
             stepIndicator.textContent = '';
@@ -637,4 +700,216 @@ function initMap() {
         directionsRenderer.nextStep();
         showCurrentStep();
     });
+
+    const userLocationIndicator = document.getElementById("user-location-indicator");
+    const locateMeBtn = document.getElementById("locate-me-btn");
+    const clearLocationBtn = document.getElementById("clear-location-btn");
+    let userLocation = null;     // { lat, lng }
+    let userMarker = null;       // Mapbox marker instance
+
+    function haversineMeters(lat1, lng1, lat2, lng2) {
+        const R = 6371000;
+        const toRad = (d) => (d * Math.PI) / 180;
+
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+
+        const a =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+
+        return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
+    function formatCoord(n) {
+        return Number.isFinite(n) ? n.toFixed(6) : String(n);
+    }
+
+    async function findNearestLocation(lat, lng) {
+        const allLocations = await loadAllVenueLocations();
+        if (!allLocations || allLocations.length === 0) return null;
+
+        let best = null;
+        let bestDist = Infinity;
+
+        for (const loc of allLocations) {
+            const anchor = loc?.properties?.anchor?.coordinates;
+            if (!Array.isArray(anchor) || anchor.length < 2) continue;
+
+            const locLng = Number(anchor[0]);
+            const locLat = Number(anchor[1]);
+            if (!Number.isFinite(locLat) || !Number.isFinite(locLng)) continue;
+
+            const d = haversineMeters(lat, lng, locLat, locLng);
+            if (d < bestDist) {
+                bestDist = d;
+                best = loc;
+            }
+        }
+
+        if (!best) return null;
+
+        return { location: best, distanceMeters: bestDist };
+    }
+
+    function renderUserLocationIndicatorUnknown() {
+        const status = userLocationIndicator.querySelector(".user-location-status");
+        const meta = userLocationIndicator.querySelector(".user-location-meta");
+
+        status.textContent = "User location is not currently known.";
+        meta.textContent = "Click “Locate me” to set a mock location within the venue.";
+    }
+
+    async function renderUserLocationIndicatorKnown(lat, lng) {
+        const status = userLocationIndicator.querySelector(".user-location-status");
+        const meta = userLocationIndicator.querySelector(".user-location-meta");
+
+        // Always show coordinates
+        meta.textContent = `Lat ${formatCoord(lat)}, Lng ${formatCoord(lng)}`;
+
+        status.textContent = "Finding nearest location…";
+
+        const result = await findNearestLocation(lat, lng);
+
+        // Clear status row and rebuild it so we can insert a clickable link
+        status.innerHTML = "";
+
+        if (!result) {
+            status.textContent = "Nearest: (none found)";
+            return;
+        }
+
+        const { location, distanceMeters } = result;
+        const name = location.properties?.name || "(Unnamed)";
+        const approx = distanceMeters < 1000
+            ? `${Math.round(distanceMeters)}m`
+            : `${(distanceMeters / 1000).toFixed(2)}km`;
+
+        // "Nearest:" label
+        const label = document.createElement("span");
+        label.textContent = "Nearest: ";
+
+        // Clickable location name
+        const link = document.createElement("button");
+        link.type = "button";
+        link.textContent = name;
+        link.style.all = "unset";        // make it look like text
+        link.style.cursor = "pointer";
+        link.style.color = "#00587C";
+        link.style.textDecoration = "underline";
+        link.style.fontWeight = "600";
+
+        link.addEventListener("click", () => {
+            // Select on map + open details card (your existing flow)
+            handleLocationClick(location);
+        });
+
+        // Distance text
+        const dist = document.createElement("span");
+        dist.textContent = ` (≈ ${approx})`;
+
+        status.appendChild(label);
+        status.appendChild(link);
+        status.appendChild(dist);
+    }
+
+    function setUserMarker(lat, lng) {
+        // Remove existing marker first
+        if (userMarker) {
+            userMarker.remove();
+            userMarker = null;
+        }
+
+        // Create a marker
+        userMarker = new mapboxgl.Marker({ color: "#00587C" })
+            .setLngLat([lng, lat])
+            .addTo(mapboxInstance);
+    }
+
+    function clearUserMarker() {
+        if (userMarker) {
+            userMarker.remove();
+            userMarker = null;
+        }
+    }
+
+    function flyToUser(lat, lng) {
+        mapboxInstance.flyTo({
+            center: [lng, lat],
+            zoom: Math.max(mapboxInstance.getZoom(), 19),
+            essential: true
+        });
+    }
+
+    function randomUserCoordinateNearVenue() {
+        // Use the same center you initialized Mapbox with
+        const center = mapViewOptions.center; // { lng, lat }
+
+        // Roughly ~200–400m spread depending on latitude; tweak as desired
+        const maxLatOffset = 0.0012; // ~133m
+        const maxLngOffset = 0.0012; // ~100–120m in Austin-ish lat
+
+        const lat = center.lat + (Math.random() * 2 - 1) * maxLatOffset;
+        const lng = center.lng + (Math.random() * 2 - 1) * maxLngOffset;
+
+        return { lat, lng };
+    }
+
+    // Initial render
+    renderUserLocationIndicatorUnknown();
+
+    locateMeBtn.addEventListener("click", async () => {
+        const { lat, lng } = randomUserCoordinateNearVenue();
+        userLocation = { lat, lng };
+
+        // Store it for later features
+        window.SXSW_USER_LOCATION = { ...userLocation };
+
+        setUserMarker(lat, lng);
+        flyToUser(lat, lng);
+        await renderUserLocationIndicatorKnown(lat, lng);
+
+        // If directions panel is currently visible, lock origin to user location
+        if (!directionsUIElement.classList.contains("hidden")) {
+            setOriginFromUserLocationIfAvailable();
+        }
+    });
+
+    clearLocationBtn.addEventListener("click", () => {
+        userLocation = null;
+        window.SXSW_USER_LOCATION = null;
+
+        clearUserMarker();
+        renderUserLocationIndicatorUnknown();
+
+        if (!directionsUIElement.classList.contains("hidden")) {
+            selectedOrigin = null;
+            originInputElement.value = "";
+            originResultsElement.innerHTML = "";
+            enableOriginSearch();
+        }
+    });
+
+    function setOriginFromUserLocationIfAvailable() {
+        if (!userLocation) return false;
+
+        // Directions origin uses coordinate object
+        selectedOrigin = {
+            properties: {
+                name: "Your location",
+                floor: selectedDestination?.properties?.floor ?? 0, // best-effort
+                anchor: { coordinates: [userLocation.lng, userLocation.lat] }
+            }
+        };
+
+        originInputElement.value = "Your location";
+        originInputElement.disabled = true;
+        originResultsElement.innerHTML = "";
+        return true;
+    }
+
+    function enableOriginSearch() {
+        originInputElement.disabled = false;
+    }
+
 }
