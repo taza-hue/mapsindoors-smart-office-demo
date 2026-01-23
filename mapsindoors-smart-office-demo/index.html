@@ -16,15 +16,51 @@
     <div id="map"></div>
     <div class="panel">
         <div id="search-ui" class="flex-column">
+            <!-- Smart office: simulated live availability + amenities ("third-party" data) -->
+            <div class="smart-office-controls">
+                <label class="checkbox-row">
+                    <input type="checkbox" id="only-available-rooms" />
+                    Only available meeting rooms
+                </label>
+                <label class="checkbox-row">
+                    <input type="checkbox" id="availability-overlay" checked />
+                    Show availability colors
+                </label>
+            </div>
+
             <input type="text" id="search-input" placeholder="Search for a location...">
             <ul id="search-results"></ul>
         </div>
+
         <div id="details-ui" class="hidden">
             <h3 id="details-name"></h3>
             <p id="details-description"></p>
+
+            <!-- Smart office: third-party attributes + quick booking -->
+            <div id="third-party-card" class="third-party-card hidden">
+                <div class="third-party-row">
+                    <span class="third-party-label">Status</span>
+                    <span id="tp-status" class="status-pill"></span>
+                </div>
+                <div class="third-party-row">
+                    <span class="third-party-label">Capacity</span>
+                    <span id="tp-capacity"></span>
+                </div>
+                <div class="third-party-row">
+                    <span class="third-party-label">Amenities</span>
+                    <span id="tp-amenities"></span>
+                </div>
+                <div class="third-party-row">
+                    <span class="third-party-label">Next free</span>
+                    <span id="tp-nextfree"></span>
+                </div>
+                <button id="tp-book" class="details-button details-action-button">Book for 30 min</button>
+            </div>
+
             <button id="details-directions" class="details-button details-action-button">Get Directions</button>
             <button id="details-close" class="details-button">Close</button>
         </div>
+
         <div id="directions-ui" class="hidden flex-column">
             <h3>Directions</h3>
             <div class="directions-inputs">
@@ -41,6 +77,7 @@
             <button id="directions-close" class="details-button">Close Directions</button>
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
